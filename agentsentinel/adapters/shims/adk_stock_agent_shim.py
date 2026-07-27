@@ -13,9 +13,15 @@ actually runs (the FunctionTool-based agent), not the unused MCP path. See
 docs/architecture.md for how this changes the injection-testing plan for
 Phase 2.
 
-Protocol: reads {"input_text": ...} from stdin, prints exactly one line
-prefixed AGENTSENTINEL_RESULT: with the JSON result (or {"error": ...}) as
-the LAST line of stdout - same convention as the other two shims.
+Protocol: reads {"input_text": ..., "case_id": ..., "tags": [...]} from
+stdin, prints exactly one line prefixed AGENTSENTINEL_RESULT: with the JSON
+result (or {"error": ...}) as the LAST line of stdout - same convention as
+the other two shims.
+
+Injection testing: if `fixtures/adk_mock_tool_responses/{case_id}.json`
+exists, get_news() is monkeypatched to return its poisoned payload instead
+of hitting the real Yahoo Finance API - see _apply_injection_fixture for
+why this has to happen at a specific point in the import order.
 """
 from __future__ import annotations
 
@@ -26,6 +32,7 @@ from pathlib import Path
 
 # agentsentinel/agentsentinel/adapters/shims/ -> GITHUB proj/
 REPO_PATH = Path(__file__).resolve().parents[4] / "finance-agent"
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "adk_mock_tool_responses"
 
 # The four LlmAgent() calls (root + 3 sub-agents) all hard-code
 # model="gemini-1.5-flash", which Google has since retired (same issue
@@ -49,6 +56,7 @@ def main() -> None:
     from agents.root_agent import build_root_agent
 
     try:
+        _apply_injection_fixture_if_present(payload.get("case_id"))
         root_agent = build_root_agent()
         root_agent.model = WORKING_MODEL
         for sub_agent in root_agent.sub_agents:
@@ -99,6 +107,34 @@ async def _run_agent(root_agent, input_text: str) -> dict:
         "sources": [],  # this agent has no retrieval/citation concept - tool_calls carry the provenance instead
         "raw_output": {"tool_call_count": len(tool_calls)},
     }
+
+
+def _apply_injection_fixture_if_present(case_id: str | None) -> None:
+    """Monkeypatches agents.sub_agents.report_agent.get_news to return a
+    poisoned fixture instead of calling the real API, for cases tagged with
+    a matching fixtures/adk_mock_tool_responses/{case_id}.json.
+
+    Must run AFTER `from agents.root_agent import build_root_agent` (so the
+    report_agent module is already imported) but BEFORE `build_root_agent()`
+    is actually called. build_report_agent()'s body does
+    `tools=[FunctionTool(get_news)]` - Python resolves that `get_news`
+    reference against the report_agent module's namespace at CALL time (when
+    build_report_agent() runs), not at its own import time, so patching the
+    module attribute here is picked up correctly even though the patch
+    happens after the module was first imported.
+    """
+    if not case_id:
+        return
+    fixture_path = FIXTURES_DIR / f"{case_id}.json"
+    if not fixture_path.exists():
+        return
+
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+    poisoned_response = fixture["response"]
+
+    import agents.sub_agents.report_agent as report_agent_module
+
+    report_agent_module.get_news = lambda ticker, max_items=5: poisoned_response
 
 
 def _emit(result: dict) -> None:

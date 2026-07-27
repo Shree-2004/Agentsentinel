@@ -8,17 +8,31 @@ import agentsentinel.scoring  # noqa: F401 - import triggers scorer registration
 from agentsentinel.adapters import available_adapters, build_adapter
 from agentsentinel.cli import cli
 from agentsentinel.runner.suite_runner import run_suite
-from agentsentinel.scoring.registry import get_scorers
+from agentsentinel.scoring.registry import get_scorers, registered_names
 from agentsentinel.storage.db import get_engine, save_full_run
 from agentsentinel.testcases.loader import load_seed_cases
 
 console = Console()
 
+# Scorers that never call an LLM judge — safe to run with zero extra deps
+# and zero API cost, appropriate for a fast per-PR gate (see
+# docs/architecture.md's "fast/deterministic vs nightly/full" split).
+# LLM-judge scorers (faithfulness, injection_resistance) are opt-in via
+# --scorers so `agentsentinel run --agent toy-agent` never silently starts
+# requiring a GOOGLE_API_KEY just because a new judge scorer got registered.
+DETERMINISTIC_SCORERS = ["keyword_match", "latency", "tool_call_correctness"]
+
 
 @cli.command()
 @click.option("--agent", "agent_name", required=True, help=f"One of: {', '.join(available_adapters())}")
 @click.option("--db-path", default=None, help="SQLite file to write results to (default: ./agentsentinel.db)")
-def run(agent_name: str, db_path: str | None) -> None:
+@click.option(
+    "--scorers",
+    default=None,
+    help=f"Comma-separated scorer names, or 'all'. Default: deterministic only ({','.join(DETERMINISTIC_SCORERS)}). "
+    f"Available: {', '.join(registered_names())}",
+)
+def run(agent_name: str, db_path: str | None, scorers: str | None) -> None:
     """Run the seed test suite against an agent and print a scorecard."""
     agent = build_adapter(agent_name)
     cases = load_seed_cases(agent_target=agent_name)
@@ -26,8 +40,15 @@ def run(agent_name: str, db_path: str | None) -> None:
         console.print(f"[yellow]No seed test cases found for agent '{agent_name}'.[/yellow]")
         raise SystemExit(1)
 
-    scorers = get_scorers()
-    scorecard, traces = run_suite(agent, cases, scorers)
+    if scorers is None:
+        scorer_names = DETERMINISTIC_SCORERS
+    elif scorers == "all":
+        scorer_names = None  # get_scorers(None) returns everything
+    else:
+        scorer_names = [s.strip() for s in scorers.split(",")]
+
+    scorer_list = get_scorers(scorer_names)
+    scorecard, traces = run_suite(agent, cases, scorer_list)
 
     engine = get_engine(db_path)
     save_full_run(engine, scorecard, traces)

@@ -12,6 +12,7 @@ from agentsentinel.core.interfaces import AgentUnderTest
 from agentsentinel.core.models import (
     AgentTrace,
     EvalResult,
+    MetricScore,
     RunContext,
     Scorecard,
     TestCase,
@@ -43,7 +44,7 @@ def run_suite(
             trace = agent.run(case, ctx)
             traces.append(trace)
 
-            scores = [scorer.score(case, trace) for scorer in scorers]
+            scores = [_score_safely(scorer, case, trace) for scorer in scorers]
             results.append(
                 EvalResult(
                     trace_id=trace.trace_id,
@@ -69,6 +70,25 @@ def run_suite(
         pass_rate=pass_rate,
     )
     return scorecard, traces
+
+
+def _score_safely(scorer: Scorer, case: TestCase, trace: AgentTrace) -> MetricScore:
+    """A scorer failing (transient API error, rate limit, malformed judge
+    output) must not lose every other case's already-collected results —
+    this bit the RAG chatbot injection run directly: cases 1-3 had already
+    made real API calls and produced real traces, and a single 429 from the
+    judge on case 4 would otherwise crash run_suite before anything got
+    saved, discarding all of it. Encode the failure as a MetricScore with
+    passed=None (no verdict — doesn't count against pass_rate) instead."""
+    try:
+        return scorer.score(case, trace)
+    except Exception as exc:  # noqa: BLE001 - isolate one bad scorer call
+        return MetricScore(
+            metric_name=getattr(scorer, "name", "unknown"),
+            score=0.0,
+            passed=None,
+            rationale=f"scorer raised {type(exc).__name__}: {exc}",
+        )
 
 
 def _aggregate_scores(results: list[EvalResult]) -> dict[str, float]:

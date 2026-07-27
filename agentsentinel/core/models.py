@@ -29,6 +29,8 @@ class CaseSource(str, Enum):
 
 @dataclass
 class TestCase:
+    __test__ = False  # not a pytest test class — name collision is coincidental
+
     id: str
     agent_target: str
     input_text: str

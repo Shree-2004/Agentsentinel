@@ -11,15 +11,21 @@ and the harness talks to it as a subprocess over a small JSON protocol —
 the harness's own dependencies (click, SQLAlchemy, rich, ...) never need to
 coexist with any target's dependencies at all.
 
-Protocol: the adapter writes {"input_text": ..., "multi_turn": ...} as JSON
-to the shim's stdin. The shim (living in agentsentinel/adapters/shims/, run
-under the TARGET's interpreter) does whatever importing/calling it needs
-and prints exactly one line prefixed with "AGENTSENTINEL_RESULT:" containing
-either {"output_text", "tool_calls", "sources", "raw_output"} on success or
-{"error": "..."} on failure. Wrapped agents often print their own progress
-lines (all three target repos in this portfolio do) — only the sentinel-
-prefixed line is parsed as the result, so agent chatter on stdout is safely
-ignored rather than corrupting the protocol.
+Protocol: the adapter writes {"input_text": ..., "multi_turn": ..., "case_id":
+..., "tags": [...]} as JSON to the shim's stdin. The shim (living in
+agentsentinel/adapters/shims/, run under the TARGET's interpreter) does
+whatever importing/calling it needs and prints exactly one line prefixed
+with "AGENTSENTINEL_RESULT:" containing either {"output_text", "tool_calls",
+"sources", "raw_output"} on success or {"error": "..."} on failure. Wrapped
+agents often print their own progress lines (all three target repos in this
+portfolio do) — only the sentinel-prefixed line is parsed as the result, so
+agent chatter on stdout is safely ignored rather than corrupting the
+protocol.
+
+`case_id`/`tags` exist so injection-test shims can look up a poisoned
+fixture keyed by case id (e.g. adapters/shims/fixtures/{case_id}.json) and
+monkeypatch the specific tool call that test case is targeting, without
+every shim needing to know about every other adapter's fixture scheme.
 """
 from __future__ import annotations
 
@@ -49,7 +55,9 @@ class SubprocessAgentAdapter(BaseAgentAdapter):
                 ),
             )
 
-        payload = json.dumps({"input_text": case.input_text, "multi_turn": case.multi_turn})
+        payload = json.dumps(
+            {"input_text": case.input_text, "multi_turn": case.multi_turn, "case_id": case.id, "tags": case.tags}
+        )
         # Wrapped agents print emoji/unicode progress lines (all three in
         # this portfolio do). Piped stdout on Windows defaults to the
         # console codepage rather than UTF-8, which crashes those prints

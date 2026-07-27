@@ -23,7 +23,7 @@ from pathlib import Path
 # agentsentinel/agentsentinel/adapters/shims/ -> GITHUB proj/
 REPO_PATH = Path(__file__).resolve().parents[4] / "RAG AI CHATBOT"
 FIXTURE_DIR = Path(__file__).resolve().parents[2] / "testcases" / "fixtures" / "rag_corpus"
-FIXTURE_HASH = "agentsentinel-fixture-corpus-v1"
+FIXTURE_HASH = "agentsentinel-fixture-corpus-v2"  # bumped: v2 adds poisoned_vacation_policy.md
 
 
 def main() -> None:

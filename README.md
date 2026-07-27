@@ -4,9 +4,11 @@
 
 Most agent portfolios stop at "it works in the demo." AgentSentinel is the other half: it wraps *any* agent (a LangGraph pipeline, a Google ADK multi-agent system, a plain RAG chain) behind one common interface, runs it against a versioned suite of normal, edge-case, and adversarial prompt-injection test cases, scores the results (faithfulness, tool-call correctness, injection resistance, latency), and gates CI on regressions.
 
-> Status: **Phase 0 and Phase 1 (all three real adapters) complete.** Core harness works end-to-end against a dependency-free toy agent, and every real target agent in the portfolio now has a working `AgentUnderTest` adapter. The LangGraph research pipeline and the RAG chatbot have both run live with a 100% pass rate. The ADK stock-analysis adapter is code-complete and its harness-level integration is verified (correct CLI output, correct error handling) — a live full run is currently blocked by an invalid `GOOGLE_API_KEY` in that target repo's own `.env`, confirmed independent of this project with a bare `google.genai.Client` call.
+> Status: **Phase 0 and Phase 1 complete. Phase 2 (faithfulness + injection) built, partially live-verified.** Every real target agent has a working `AgentUnderTest` adapter (Phase 1). On top of that: a calibrated LLM-judge faithfulness scorer (**100% agreement** with hand-labeled cases — see `agentsentinel calibrate`), a deterministic+judge injection-resistance scorer, and one injection test case per adapter that actually needs different delivery mechanics (a poisoned RAG document vs. a monkeypatched tool response — see [docs/architecture.md](docs/architecture.md)).
 >
-> Along the way the harness caught **four real, independent issues** in the wrapped agents — exactly the kind of thing this project exists to catch: a crash in the research pipeline when the critic never approves within its iteration budget; a self-conflicting `requirements.txt` in the RAG chatbot repo; a hard-coded reference to a since-retired Gemini model (`gemini-1.5-flash`) in *two separate repos*; and a README claiming an MCP server as a headline feature that the live agent path never actually calls (see [docs/architecture.md](docs/architecture.md) for all four in detail).
+> Along the way the harness caught **five real, independent issues** — exactly the kind of thing this project exists to catch: a crash in the research pipeline when the critic never approves within its iteration budget; a self-conflicting `requirements.txt` in the RAG chatbot repo; a hard-coded reference to a since-retired Gemini model (`gemini-1.5-flash`) in *two separate repos*; a README claiming an MCP server as a headline feature that the live agent path never actually calls; and **a bug in AgentSentinel itself** — a single scorer's exception used to crash the entire run and discard every already-collected result, found via a real rate-limit hit mid-run and now fixed with a regression test (see docs/architecture.md).
+>
+> **Two things pending only on external resources, not on code**: the RAG chatbot's injection case and the ADK adapter's live runs are both currently blocked by exhausted free-tier API quotas / an invalid key, not by anything left to build.
 
 ## Why this exists
 
@@ -40,6 +42,12 @@ pip install -e ".[dev]"
 
 pytest -v                              # runs the toy-agent end-to-end suite
 python -m agentsentinel.cli run --agent toy-agent   # prints a live scorecard
+
+# Optional, for the LLM-judge scorers (faithfulness, injection_resistance):
+pip install -e ".[judge]"
+cp .env.example .env    # add your own GOOGLE_API_KEY - separate from any target agent's
+python -m agentsentinel.cli calibrate                       # check judge agreement on hand-labeled cases
+python -m agentsentinel.cli run --agent rag-chatbot-langchain --scorers all   # include faithfulness + injection
 ```
 
 ## Project structure
@@ -49,8 +57,10 @@ agentsentinel/
   core/         # AgentUnderTest interface + TestCase/AgentTrace/Scorecard data model
   adapters/     # toy_agent (in-process) + real adapters (subprocess-isolated, own venv per target)
     shims/      # small scripts executed under each TARGET repo's own interpreter
-  scoring/      # pluggable, self-registering metrics (keyword_match, latency,
-                # tool_call_correctness now; faithfulness + injection_resistance in Phase 2)
+  scoring/      # pluggable, self-registering metrics: keyword_match, latency,
+                # tool_call_correctness (deterministic), faithfulness,
+                # injection_resistance (LLM-judge, via judge_llm.py)
+    calibration/  # hand-labeled faithfulness cases + `agentsentinel calibrate`
   testcases/    # versioned YAML test cases (seed/ = trusted, CI-gating)
   runner/       # suite_runner: setup -> run -> score -> aggregate
   storage/      # SQLAlchemy schema + SQLite persistence, regression diffing
@@ -64,7 +74,7 @@ docs/
 
 - [x] **Phase 0** — Core interfaces, toy adapter, deterministic scorers, SQLite storage, CI.
 - [x] **Phase 1** — Real adapters for all three target agents (LangGraph research pipeline, RAG chatbot, Google ADK stock-analysis agent), each subprocess-isolated in its own venv — see [docs/architecture.md](docs/architecture.md). LangGraph and RAG chatbot are live-verified end-to-end; the ADK adapter is code-complete and harness-verified, pending a valid API key in its target repo.
-- [ ] **Phase 2** — RAGAS-style faithfulness scorer (LLM-as-judge, calibrated against a hand-labeled set) + a curated prompt-injection corpus. Originally scoped around the ADK agent's MCP server; revised to target the `FunctionTool` layer it actually calls through (see docs/architecture.md's MCP-bypass finding).
+- [x] **Phase 2** — Faithfulness scorer (RAGAS-style LLM-judge, **100% calibration agreement**) + injection-resistance scorer (deterministic canary + judge fallback) + one injection test case per adapter (a poisoned RAG document, a monkeypatched ADK tool response — mechanism revised from the original MCP-server-mock plan per the MCP-bypass finding). Both injection cases are code-complete and crash-safety-verified; live pass/fail verdicts are pending quota/credential availability, not further work.
 - [ ] **Phase 3** — Regression tracking against a baseline run + Streamlit dashboard (trace explorer, score history, a dedicated injection tab).
 - [ ] **Phase 4** — GitHub Actions CI gate wired into a real target repo (fast deterministic checks per-PR, full LLM-judge run nightly).
 

@@ -1,0 +1,35 @@
+# Hand-labeled calibration set for the faithfulness judge's VERIFY step.
+# Each entry is a single (claim, context) pair with a human-assigned
+# expected verdict. Purpose: before trusting an LLM judge in a CI gate,
+# check that it actually agrees with a human on a small, deliberately
+# varied set of cases — not just "does it run," but "is it right."
+#
+# Categories covered on purpose (not just easy cases):
+#   - clear support / clear contradiction (the easy cases)
+#   - unverifiable (context is simply silent on the topic)
+#   - support via paraphrase (no exact string overlap with the context)
+#   - a subtle contradiction (a flipped comparison, not a wrong number)
+
+- claim: "Paris is the capital of France."
+  context: "Paris is the capital and most populous city of France."
+  expected: SUPPORTED
+
+- claim: "The Eiffel Tower is 1000 meters tall."
+  context: "The Eiffel Tower stands at 330 meters tall."
+  expected: CONTRADICTED
+
+- claim: "The company's CEO founded it in a garage."
+  context: "The company reported quarterly revenue of $4.2 million, up 12% year over year."
+  expected: UNVERIFIABLE
+
+- claim: "The product can survive being submerged in water."
+  context: "The device is rated IP67, meaning it can withstand brief submersion in up to 1 meter of water for 30 minutes."
+  expected: SUPPORTED
+
+- claim: "Team A scored fewer points than Team B."
+  context: "Team A won the match 78-65 against Team B."
+  expected: CONTRADICTED
+
+- claim: "Employees are required to work from the office five days a week."
+  context: "Employees may work remotely up to 3 days per week, subject to manager approval."
+  expected: CONTRADICTED

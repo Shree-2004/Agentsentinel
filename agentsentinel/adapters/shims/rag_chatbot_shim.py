@@ -42,6 +42,16 @@ def main() -> None:
     from src.pipeline import ask
     from src.retriever import build_vector_store
 
+    # The target repo hard-codes config.GEMINI_MODEL = "gemini-1.5-flash",
+    # which Google has since retired (confirmed via a live 404 from the
+    # generateContent API: "models/gemini-1.5-flash is not found"). This is
+    # a real bug in the target repo's config, not a harness issue - flagged
+    # to the user rather than fixed there, since that's a separate project.
+    # Overridden here only so this adapter isn't permanently blocked by it.
+    import config as target_config
+
+    target_config.GEMINI_MODEL = "gemini-2.5-flash"
+
     try:
         documents = [
             Document(
@@ -75,7 +85,9 @@ def main() -> None:
             "source": c.get("source", ""),
             "page": c.get("page") if isinstance(c.get("page"), int) else None,
             "chunk_index": c.get("chunk_index") if isinstance(c.get("chunk_index"), int) else None,
-            "score": c.get("score"),
+            # retriever.py's similarity scores are numpy.float32, which
+            # json.dumps can't serialize - coerce to a native Python float.
+            "score": float(c["score"]) if c.get("score") is not None else None,
             "label": c.get("label"),
         }
         for c in source_chunks

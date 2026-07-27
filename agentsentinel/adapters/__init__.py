@@ -19,7 +19,21 @@ def _register_toy_agent():
     return ToyAgentAdapter()
 
 
+def _register_langgraph_research():
+    from agentsentinel.adapters.langgraph_research import LangGraphResearchAdapter
+
+    return LangGraphResearchAdapter()
+
+
+def _register_rag_chatbot():
+    from agentsentinel.adapters.rag_chatbot import RagChatbotAdapter
+
+    return RagChatbotAdapter()
+
+
 _ADAPTER_FACTORIES["toy-agent"] = _register_toy_agent
+_ADAPTER_FACTORIES["research-pipeline-langgraph"] = _register_langgraph_research
+_ADAPTER_FACTORIES["rag-chatbot-langchain"] = _register_rag_chatbot
 
 
 def build_adapter(name: str) -> AgentUnderTest:

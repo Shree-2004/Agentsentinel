@@ -23,6 +23,19 @@ Each adapter absorbs its target's execution model internally — draining a gene
 
 `AgentUnderTest` is a `Protocol` (structural typing), not a required base class, so adapters can wrap a target repo without that repo needing to know AgentSentinel exists — no invasive instrumentation of the projects being evaluated.
 
+## Why real adapters run their target in a subprocess, not in-process
+
+The original Phase 1 plan was `sys.path` injection into AgentSentinel's own interpreter — simple, and fine in principle. It broke on contact with real dependencies: the LangGraph research repo pins `langchain==0.2.16`; the RAG chatbot repo pins `langchain==0.3.7`. That's a real major-version conflict, not a pinning oversight — installing both into one shared venv silently upgrades/downgrades one of them and breaks whichever adapter isn't currently being tested. A harness that can only evaluate agents whose dependencies happen to be mutually compatible isn't actually general-purpose.
+
+So each real adapter (`langgraph_research.py`, `rag_chatbot.py`) subclasses `SubprocessAgentAdapter` instead of importing its target directly:
+
+- The target keeps (or gets, via `adapters/venv_utils.py::ensure_venv`) its **own venv**, completely isolated from AgentSentinel's own dependencies and from every other adapter's target.
+- A small shim script per adapter (`adapters/shims/*.py`) is executed **under the target's interpreter**. Shims have zero import dependency on the `agentsentinel` package itself — that venv never has it installed — only stdlib plus whatever the target repo provides.
+- Protocol: the parent process writes `{"input_text": ..., "multi_turn": ...}` as JSON to the shim's stdin; the shim prints exactly one line prefixed `AGENTSENTINEL_RESULT:` containing the trace JSON (or `{"error": ...}`) as the *last* line of stdout. Wrapped agents print their own progress freely (all three target repos in this portfolio do, with emoji/unicode arrows) — only the sentinel-prefixed line is parsed, so agent chatter never corrupts the protocol.
+- Windows detail: piped stdout defaults to the console codepage (cp1252), not UTF-8, and multiple target repos crash on their own `print("→ ...")` debug lines under that codepage. Both the CLI's own stdout (`cli/__main__.py`) and the subprocess child env (`PYTHONIOENCODING=utf-8` in `subprocess_base.py`) force UTF-8 explicitly — this is a real, generalizable failure mode wrapping *anyone's* third-party agent on Windows, not a one-off.
+
+Known limitation: a subprocess is spawned fresh per test case, so **multi-turn conversation memory isn't threaded through** for adapters that would need it (the RAG chatbot's `chat_history` param is always empty here). Supporting it would mean a long-lived shim process communicating over a persistent pipe rather than one process per call — left for a future phase since the current seed corpus is single-turn only.
+
 ## Why `TestCase.expected` is a loose dict
 
 A normal test case cares about `{"must_contain": [...]}`. An injection case cares about `{"forbidden_action": ..., "canary_string": ...}`. A future tool-call-correctness case cares about `{"expected_tool_calls": [...]}`. Forcing one rigid schema across all of these would mean a migration every time a new scorer is added. Instead, `expected` is an open dict and each `Scorer` reads only the keys it understands — a scorer that doesn't recognize a key simply doesn't apply, rather than erroring.

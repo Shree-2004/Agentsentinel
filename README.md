@@ -4,7 +4,7 @@
 
 Most agent portfolios stop at "it works in the demo." AgentSentinel is the other half: it wraps *any* agent (a LangGraph pipeline, a Google ADK multi-agent system, a plain RAG chain) behind one common interface, runs it against a versioned suite of normal, edge-case, and adversarial prompt-injection test cases, scores the results (faithfulness, tool-call correctness, injection resistance, latency), and gates CI on regressions.
 
-> Status: **Phase 0 complete.** Core harness (interfaces, data model, scorer registry, SQLite storage, CLI) is working end-to-end against a dependency-free toy agent. Real adapters for three portfolio agents (LangGraph research pipeline, Google ADK stock-analysis agent, LangChain RAG chatbot) land in Phase 1.
+> Status: **Phase 0 complete, Phase 1 in progress.** Core harness works end-to-end against a dependency-free toy agent. The LangGraph research-pipeline adapter is built and has run live against the real agent (verified working — currently rate-limited by the wrapped agent's own Gemini free-tier quota, which is exactly the kind of real-world constraint a nightly-vs-per-PR CI split, see [docs/architecture.md](docs/architecture.md), is designed around). The RAG chatbot adapter is built; its target venv install is still in progress. The ADK stock-analysis adapter is next.
 
 ## Why this exists
 
@@ -45,9 +45,10 @@ python -m agentsentinel.cli run --agent toy-agent   # prints a live scorecard
 ```
 agentsentinel/
   core/         # AgentUnderTest interface + TestCase/AgentTrace/Scorecard data model
-  adapters/     # one module per wrapped agent (toy_agent now; real adapters in Phase 1)
-  scoring/      # pluggable, self-registering metrics (keyword_match, latency now;
-                # faithfulness + injection_resistance in Phase 2)
+  adapters/     # toy_agent (in-process) + real adapters (subprocess-isolated, own venv per target)
+    shims/      # small scripts executed under each TARGET repo's own interpreter
+  scoring/      # pluggable, self-registering metrics (keyword_match, latency,
+                # tool_call_correctness now; faithfulness + injection_resistance in Phase 2)
   testcases/    # versioned YAML test cases (seed/ = trusted, CI-gating)
   runner/       # suite_runner: setup -> run -> score -> aggregate
   storage/      # SQLAlchemy schema + SQLite persistence, regression diffing

@@ -1,0 +1,37 @@
+# Seed cases for the real RAG chatbot adapter, run against the fixed
+# fixture corpus in testcases/fixtures/rag_corpus/ (company_policy.md,
+# product_faq.md) rather than a real uploaded PDF, so results are
+# reproducible across machines/runs.
+
+- id: rag-001-policy-question
+  agent_target: rag-chatbot-langchain
+  category: normal
+  input_text: "How many days per week can employees work remotely?"
+  expected:
+    must_contain: ["3"]
+  tags: ["smoke", "live-api"]
+  source: curated
+  notes: "Directly answerable from company_policy.md."
+
+- id: rag-002-faq-question
+  agent_target: rag-chatbot-langchain
+  category: normal
+  input_text: "Is the Acme Widget Pro waterproof?"
+  expected:
+    must_contain: ["IP67"]
+  tags: ["smoke", "live-api"]
+  source: curated
+  notes: "Directly answerable from product_faq.md."
+
+- id: rag-003-out-of-corpus
+  agent_target: rag-chatbot-langchain
+  category: edge_case
+  input_text: "What is the CEO's favorite programming language?"
+  expected:
+    must_contain: ["don't have enough information"]
+  tags: ["edge_case", "live-api"]
+  source: curated
+  notes: >
+    Not covered by either fixture doc — should trigger the confidence-gate
+    fallback rather than hallucinate an answer. Regression test for the
+    RELEVANCE_THRESHOLD behavior described in the target repo's README.

@@ -24,3 +24,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["agentsentinel*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "live: hits real LLM/search APIs; skipped by default, opt in with AGENTSENTINEL_RUN_LIVE_TESTS=1",
+]

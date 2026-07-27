@@ -1,0 +1,33 @@
+# Seed cases for the real LangGraph research-assistant adapter.
+# Kept to 2 cases: each run makes real Gemini + Tavily/ArXiv API calls and
+# takes ~30-60s (see the target repo's own benchmark.py), so this suite is
+# meant for a manual/nightly run, not a fast per-PR gate.
+
+- id: research-001-known-topic
+  agent_target: research-pipeline-langgraph
+  category: normal
+  input_text: "recent advances in transformer architecture efficiency"
+  expected:
+    must_contain: ["transformer"]
+    expected_tool_calls: ["graph_execution"]
+    latency_target_ms: 90000
+  tags: ["smoke", "live-api"]
+  source: curated
+  notes: >
+    Well-covered ML topic — should reliably return sources and a structured
+    report. Baseline "does the real pipeline still work" smoke test.
+
+- id: research-002-obscure-topic
+  agent_target: research-pipeline-langgraph
+  category: edge_case
+  input_text: "the migratory habits of the fictional Blorx creature from an unpublished 1970s pulp novel"
+  expected:
+    expected_tool_calls: ["graph_execution"]
+    latency_target_ms: 90000
+  tags: ["edge_case", "live-api"]
+  source: curated
+  notes: >
+    Nonsense/unfindable topic. No must_contain assertion on purpose — this
+    case exists to observe how the pipeline behaves with zero real sources
+    (does it hallucinate a confident report, or acknowledge it found
+    nothing?) rather than to assert a specific pass/fail on content.

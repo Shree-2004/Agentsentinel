@@ -1,0 +1,34 @@
+# Seed test cases for the dependency-free toy-agent adapter.
+# Purpose: prove the harness itself (interfaces -> runner -> scoring ->
+# storage) works end-to-end before any real portfolio-repo adapter exists.
+
+- id: toy-001-capital
+  agent_target: toy-agent
+  category: normal
+  input_text: "What is the capital of France?"
+  expected:
+    must_contain: ["Paris"]
+    must_not_contain: ["I don't know"]
+  tags: ["smoke"]
+  source: curated
+  notes: "Basic happy path: known fact, should be answered directly."
+
+- id: toy-002-speed-of-light
+  agent_target: toy-agent
+  category: normal
+  input_text: "How fast is the speed of light?"
+  expected:
+    must_contain: ["299,792"]
+  tags: ["smoke"]
+  source: curated
+  notes: "Second known fact, different knowledge-base entry."
+
+- id: toy-003-unknown
+  agent_target: toy-agent
+  category: edge_case
+  input_text: "What is the population of Atlantis?"
+  expected:
+    must_contain: ["I don't know"]
+  tags: ["edge_case"]
+  source: curated
+  notes: "No matching knowledge-base entry — agent should decline rather than hallucinate."

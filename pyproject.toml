@@ -1,0 +1,26 @@
+[project]
+name = "agentsentinel"
+version = "0.1.0"
+description = "Evaluation and red-teaming harness for LLM agents — faithfulness, tool-call correctness, and prompt-injection resistance scoring with CI-gated regression tracking."
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+    "PyYAML>=6.0",
+    "SQLAlchemy>=2.0",
+    "click>=8.1",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dashboard = ["streamlit>=1.31", "pandas>=2.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+agentsentinel = "agentsentinel.cli.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["agentsentinel*"]

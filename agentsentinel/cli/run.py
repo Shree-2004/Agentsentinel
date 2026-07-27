@@ -32,14 +32,27 @@ def run(agent_name: str, db_path: str | None) -> None:
     engine = get_engine(db_path)
     save_full_run(engine, scorecard, traces)
 
-    _print_scorecard(scorecard)
+    _print_scorecard(scorecard, traces)
     if scorecard.pass_rate < 1.0:
         raise SystemExit(1)
 
 
-def _print_scorecard(scorecard) -> None:
+def _print_scorecard(scorecard, traces) -> None:
     console.print(f"\n[bold]Run {scorecard.run_id}[/bold] - agent: {scorecard.agent_name}")
     console.print(f"Pass rate: {scorecard.pass_rate:.0%}\n")
+
+    # Surface adapter-level errors up front — these are agent/environment
+    # failures (bad API key, timeout, target-repo bug) rather than a score
+    # to weigh, and they explain why every metric for that case looks like
+    # a failure. Without this, understanding *why* a case failed means
+    # manually querying the SQLite traces table for the .error field.
+    errored = [t for t in traces if t.error]
+    if errored:
+        console.print(f"[bold red]{len(errored)} case(s) errored (not scored, adapter/agent-level failure):[/bold red]")
+        for trace in errored:
+            first_line = trace.error.splitlines()[0]
+            console.print(f"  [red]{trace.test_case_id}[/red]: {first_line}")
+        console.print()
 
     table = Table(title="Aggregate scores")
     table.add_column("Metric")

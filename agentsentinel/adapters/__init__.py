@@ -31,9 +31,16 @@ def _register_rag_chatbot():
     return RagChatbotAdapter()
 
 
+def _register_adk_stock_agent():
+    from agentsentinel.adapters.adk_stock_agent import AdkStockAgentAdapter
+
+    return AdkStockAgentAdapter()
+
+
 _ADAPTER_FACTORIES["toy-agent"] = _register_toy_agent
 _ADAPTER_FACTORIES["research-pipeline-langgraph"] = _register_langgraph_research
 _ADAPTER_FACTORIES["rag-chatbot-langchain"] = _register_rag_chatbot
+_ADAPTER_FACTORIES["stock-analysis-adk"] = _register_adk_stock_agent
 
 
 def build_adapter(name: str) -> AgentUnderTest:

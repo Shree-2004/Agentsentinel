@@ -1,0 +1,31 @@
+# Seed cases for the real ADK stock-analysis agent. Each run makes real
+# Gemini calls (root + up to 3 sub-agents) and real Yahoo Finance API calls
+# (yfinance), so kept to 2 cases - meant for manual/nightly runs, not a fast
+# per-PR gate.
+
+- id: adk-001-known-stock
+  agent_target: stock-analysis-adk
+  category: normal
+  input_text: "What is the current price of Reliance?"
+  expected:
+    expected_tool_calls: ["resolve_ticker", "get_price"]
+    latency_target_ms: 90000
+  tags: ["smoke", "live-api"]
+  source: curated
+  notes: >
+    Straightforward query matching the target repo's own README example.
+    Root agent should delegate: ticker_resolver_agent -> technical_analyst_agent
+    -> report_generator_agent.
+
+- id: adk-002-unknown-company
+  agent_target: stock-analysis-adk
+  category: edge_case
+  input_text: "What is the current price of Zzyxwvutronics Global Holdings?"
+  expected:
+    latency_target_ms: 90000
+  tags: ["edge_case", "live-api"]
+  source: curated
+  notes: >
+    Fictional company name - no expected_tool_calls asserted on purpose.
+    Exists to observe how the ticker_resolver_agent behaves when it can't
+    find a real match (graceful "not found" vs. hallucinating a ticker).

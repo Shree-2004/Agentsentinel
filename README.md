@@ -37,7 +37,7 @@ TestCase ──► AgentUnderTest.run() ──► AgentTrace ──► Scorer(s)
                                                                         CI gate (pass/fail exit code)
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the full design rationale (why `Protocol` over an ABC, why `TestCase.expected` is a loose dict, why injection payloads live in mocked tool-response fixtures rather than the test file itself).
+See [docs/architecture.md](docs/architecture.md) for the full design rationale (why `Protocol` over an ABC, why `TestCase.expected` is a loose dict, why injection payloads live in mocked tool-response fixtures rather than the test file itself). To wire up a new agent from a different repo, see [docs/adding_an_adapter.md](docs/adding_an_adapter.md) — same recipe used for all three agents in this portfolio.
 
 ## Quick start
 

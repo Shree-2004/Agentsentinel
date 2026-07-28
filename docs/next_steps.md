@@ -84,11 +84,12 @@ The roadmap's last unchecked box. Scope, per the original plan and
 - A second, separate scheduled/nightly workflow that runs `--scorers all`
   (LLM-judge scorers included) against the real agents, since that's slow and
   costs API quota — should not run on every PR.
-- `docs/adding_an_adapter.md` and `docs/injection_taxonomy.md` were mentioned
-  in the original project plan as documentation deliverables for this phase
-  but don't exist yet — worth writing if this project is going to be shown to
-  others as a portfolio piece, since they're the "how do I extend this"
-  and "what attack patterns does this corpus cover" reference docs.
+- `docs/adding_an_adapter.md` is now written (the "how do I extend this to a
+  new repo" guide) — done. `docs/injection_taxonomy.md` ("what attack
+  patterns does this corpus cover") is still not written; low priority
+  unless the injection corpus grows past the two archetypes currently
+  covered (indirect injection via a poisoned document, via a poisoned tool
+  response).
 
 ## Known environment quirks worth remembering
 

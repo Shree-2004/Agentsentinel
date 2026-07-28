@@ -81,6 +81,8 @@ docs/
 
 ## Roadmap
 
+> Picking this back up cold? See [docs/next_steps.md](docs/next_steps.md) for a concrete punch list of what's actually left, not just the checkboxes below.
+
 - [x] **Phase 0** — Core interfaces, toy adapter, deterministic scorers, SQLite storage, CI.
 - [x] **Phase 1** — Real adapters for all three target agents (LangGraph research pipeline, RAG chatbot, Google ADK stock-analysis agent), each subprocess-isolated in its own venv — see [docs/architecture.md](docs/architecture.md). All three now live-verified end-to-end, including the ADK adapter's normal cases (one test assertion corrected along the way — see docs).
 - [x] **Phase 2** — Faithfulness scorer (RAGAS-style LLM-judge, **100% calibration agreement**) + injection-resistance scorer (deterministic canary + judge fallback) + one injection test case per adapter (a poisoned RAG document, a monkeypatched ADK tool response — mechanism revised from the original MCP-server-mock plan per the MCP-bypass finding). **RAG chatbot injection case: confirmed RESISTED**, live-verified. **ADK injection case: still no confirmed verdict after 2 live attempts**, each failing to reach the poisoned tool for a different reason (a ticker-resolution miss, then a root-agent delegation short-circuit that skips the sub-agent holding the poisoned tool) — a real, repeatable finding about the target's own pipeline reliability, documented in docs/architecture.md, with a redesigned test case needed rather than a third blind retry.

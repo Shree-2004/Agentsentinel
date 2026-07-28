@@ -49,6 +49,10 @@ pip install -e ".[judge]"
 cp .env.example .env    # add your own GOOGLE_API_KEY - separate from any target agent's
 python -m agentsentinel.cli calibrate                       # check judge agreement on hand-labeled cases
 python -m agentsentinel.cli run --agent rag-chatbot-langchain --scorers all   # include faithfulness + injection
+
+# Optional, for the dashboard:
+pip install -e ".[dashboard]"
+python -m agentsentinel.cli dashboard   # or: streamlit run agentsentinel/dashboard/app.py
 ```
 
 ## Project structure
@@ -64,9 +68,9 @@ agentsentinel/
     calibration/  # hand-labeled faithfulness cases + `agentsentinel calibrate`
   testcases/    # versioned YAML test cases (seed/ = trusted, CI-gating)
   runner/       # suite_runner: setup -> run -> score -> aggregate
-  storage/      # SQLAlchemy schema + SQLite persistence, regression diffing
-  cli/          # `agentsentinel run` / `gate` / `generate` / `report`
-  dashboard/    # Streamlit scorecard + trace explorer (Phase 3)
+  storage/      # SQLAlchemy schema + SQLite persistence + regression.py (baseline diffing)
+  cli/          # `agentsentinel run` / `gate` / `calibrate` / `dashboard`
+  dashboard/    # Streamlit: Overview, Trace Explorer, Score History, 🛡️ Injection tabs
 tests/
 docs/
 ```
@@ -77,7 +81,7 @@ docs/
 - [x] **Phase 1** — Real adapters for all three target agents (LangGraph research pipeline, RAG chatbot, Google ADK stock-analysis agent), each subprocess-isolated in its own venv — see [docs/architecture.md](docs/architecture.md). LangGraph and RAG chatbot are live-verified end-to-end; the ADK adapter is code-complete and harness-verified, pending a valid API key in its target repo.
 - [x] **Phase 2** — Faithfulness scorer (RAGAS-style LLM-judge, **100% calibration agreement**) + injection-resistance scorer (deterministic canary + judge fallback) + one injection test case per adapter (a poisoned RAG document, a monkeypatched ADK tool response — mechanism revised from the original MCP-server-mock plan per the MCP-bypass finding). **RAG chatbot injection case: confirmed RESISTED**, live-verified. ADK injection case: code-complete and mechanism-verified, pending a valid API key in its target repo.
 - [x] **Phase 3a** — Regression tracking (`storage/regression.py`) + `agentsentinel gate` CLI, with per-metric thresholds (latency tolerates more jitter than injection_resistance, which tolerates none). Verified with a real before/after/recovery cycle, not just unit tests: deliberately broke the toy agent's answer, watched `gate` catch the drop and exit non-zero, reverted, watched the recovery correctly *not* get flagged. See [docs/architecture.md](docs/architecture.md).
-- [ ] **Phase 3b** — Streamlit dashboard (trace explorer, score history, a dedicated injection tab).
+- [x] **Phase 3b** — Streamlit dashboard: Overview (run picker + regressions), Trace Explorer (per-case output/tool-calls/sources/rationale), Score History (line chart per metric), and a dedicated 🛡️ Injection tab surfacing any `COMPLIED` verdict across every agent/run. Reads directly off the same SQLite data `run`/`gate` already write — no separate ingestion. `agentsentinel dashboard` to launch.
 - [ ] **Phase 4** — GitHub Actions CI gate wired into a real target repo (fast deterministic checks per-PR, full LLM-judge run nightly).
 
 ## License

@@ -1,0 +1,41 @@
+# Bring-your-own-agent example: this whole file is all that's needed to
+# get agent.py (an ordinary, undecorated function AgentSentinel has never
+# seen before) evaluated. No adapter, no shim — see docs/bring_your_own_agent.md.
+#
+# Run with:
+#   python -m agentsentinel.cli run --config examples/simple_agent/agentsentinel.yaml
+
+agent:
+  name: simple-faq-bot
+  repo_path: .                    # relative to this file's own location
+  requirements_file: requirements.txt   # used only if venv/ doesn't exist yet
+  entrypoint:
+    module: agent                 # agent.py, importable once repo_path is on sys.path
+    function: answer
+  output_style: string            # answer() returns a plain string
+  dotenv: false                   # no .env to load for this example
+
+cases:
+  - id: faq-001-returns
+    category: normal
+    input_text: "What is your return policy?"
+    expected:
+      must_contain: ["30 days"]
+    source: curated
+    notes: "Directly answerable from agent.py's own FAQ dict."
+
+  - id: faq-002-shipping
+    category: normal
+    input_text: "What is your shipping time?"
+    expected:
+      must_contain: ["3-5 business days"]
+    source: curated
+    notes: "Second FAQ entry, different topic."
+
+  - id: faq-003-unknown
+    category: edge_case
+    input_text: "What's the meaning of life?"
+    expected:
+      must_contain: ["don't know"]
+    source: curated
+    notes: "Not in the FAQ dict - should decline gracefully, not hallucinate."

@@ -14,14 +14,17 @@ from agentsentinel.core.models import CaseCategory, CaseSource, TestCase
 SEED_DIR = Path(__file__).parent / "seed"
 
 
-def load_file(path: Path) -> list[TestCase]:
-    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+def parse_case_entries(raw: list[dict], default_agent_target: str | None = None) -> list[TestCase]:
+    """Shared by the seed-file loader and external_config.py's combined
+    agent+cases YAML — same case schema either way. `default_agent_target`
+    lets a single-agent external config omit agent_target on every case
+    (there's only one agent to target, so repeating it is just noise)."""
     cases = []
     for entry in raw:
         cases.append(
             TestCase(
                 id=entry["id"],
-                agent_target=entry["agent_target"],
+                agent_target=entry.get("agent_target", default_agent_target),
                 input_text=entry["input_text"],
                 category=CaseCategory(entry["category"]),
                 multi_turn=entry.get("multi_turn", False),
@@ -32,6 +35,11 @@ def load_file(path: Path) -> list[TestCase]:
             )
         )
     return cases
+
+
+def load_file(path: Path) -> list[TestCase]:
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+    return parse_case_entries(raw)
 
 
 def load_seed_cases(agent_target: str | None = None, directory: Path | None = None) -> list[TestCase]:

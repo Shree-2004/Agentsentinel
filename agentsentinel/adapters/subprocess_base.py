@@ -45,6 +45,13 @@ class SubprocessAgentAdapter(BaseAgentAdapter):
     shim_path: Path
     timeout_s: float = 300.0
 
+    def _extra_payload(self, case: TestCase) -> dict:
+        """Hook for subclasses that need to send more than the standard
+        fields to their shim — e.g. GenericAgentAdapter sends the whole
+        parsed entrypoint config, since its shim is generic and doesn't know
+        anything about the target ahead of time. Default: nothing extra."""
+        return {}
+
     def _invoke(self, case: TestCase, ctx: RunContext) -> AgentTrace:
         if not self.venv_python.exists():
             return AgentTrace(
@@ -55,9 +62,11 @@ class SubprocessAgentAdapter(BaseAgentAdapter):
                 ),
             )
 
-        payload = json.dumps(
-            {"input_text": case.input_text, "multi_turn": case.multi_turn, "case_id": case.id, "tags": case.tags}
-        )
+        payload_dict = {
+            "input_text": case.input_text, "multi_turn": case.multi_turn, "case_id": case.id, "tags": case.tags,
+        }
+        payload_dict.update(self._extra_payload(case))
+        payload = json.dumps(payload_dict)
         # Wrapped agents print emoji/unicode progress lines (all three in
         # this portfolio do). Piped stdout on Windows defaults to the
         # console codepage rather than UTF-8, which crashes those prints

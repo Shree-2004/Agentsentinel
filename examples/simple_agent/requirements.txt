@@ -1,0 +1,4 @@
+# This example agent has zero third-party dependencies - this file exists
+# only so GenericAgentAdapter has something to point `ensure_venv` at, to
+# prove even a zero-dependency target gets a real, working venv created
+# automatically on first run.

@@ -8,6 +8,7 @@ from agentsentinel.core.models import Scorecard, AgentTrace
 from agentsentinel.runner.suite_runner import run_suite
 from agentsentinel.scoring.registry import get_scorers
 from agentsentinel.storage.db import get_engine, save_full_run
+from agentsentinel.testcases.external_config import load_external_config
 from agentsentinel.testcases.loader import load_seed_cases
 
 # Scorers that never call an LLM judge — safe to run with zero extra deps
@@ -28,15 +29,27 @@ def resolve_scorer_names(scorers: str | None) -> list[str] | None:
 
 
 def execute_and_save(
-    agent_name: str, db_path: str | None, scorers: str | None
+    agent_name: str | None, db_path: str | None, scorers: str | None, config_path: str | None = None
 ) -> tuple[Scorecard, list[AgentTrace], object]:
-    """Runs the seed suite for `agent_name`, persists it, and returns
-    (scorecard, traces, engine) — engine is returned so callers (gate) can
-    run a regression check against the same database without reopening it."""
-    agent = build_adapter(agent_name)
-    cases = load_seed_cases(agent_target=agent_name)
+    """Runs a suite and persists it, returning (scorecard, traces, engine) —
+    engine is returned so callers (gate) can run a regression check against
+    the same database without reopening it.
+
+    Two ways to specify what to run, mutually exclusive:
+    - agent_name: one of the built-in adapters, cases from testcases/seed/
+    - config_path: a "bring your own agent" YAML (see
+      testcases/external_config.py) bundling both the agent connection info
+      and its cases in one file — for agents that don't have a hand-written
+      adapter in this repo.
+    """
+    if config_path:
+        agent, cases = load_external_config(config_path)
+    else:
+        agent = build_adapter(agent_name)
+        cases = load_seed_cases(agent_target=agent_name)
+
     if not cases:
-        raise ValueError(f"No seed test cases found for agent '{agent_name}'.")
+        raise ValueError(f"No test cases found for agent '{agent_name or config_path}'.")
 
     scorer_list = get_scorers(resolve_scorer_names(scorers))
     scorecard, traces = run_suite(agent, cases, scorer_list)

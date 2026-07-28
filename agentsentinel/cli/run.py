@@ -14,7 +14,13 @@ console = Console()
 
 
 @cli.command()
-@click.option("--agent", "agent_name", required=True, help=f"One of: {', '.join(available_adapters())}")
+@click.option("--agent", "agent_name", default=None, help=f"One of the built-in adapters: {', '.join(available_adapters())}")
+@click.option(
+    "--config",
+    "config_path",
+    default=None,
+    help="Path to a 'bring your own agent' YAML instead of --agent — see docs/bring_your_own_agent.md",
+)
 @click.option("--db-path", default=None, help="SQLite file to write results to (default: ./agentsentinel.db)")
 @click.option(
     "--scorers",
@@ -22,10 +28,17 @@ console = Console()
     help=f"Comma-separated scorer names, or 'all'. Default: deterministic only ({','.join(DETERMINISTIC_SCORERS)}). "
     f"Available: {', '.join(registered_names())}",
 )
-def run(agent_name: str, db_path: str | None, scorers: str | None) -> None:
+def run(agent_name: str | None, config_path: str | None, db_path: str | None, scorers: str | None) -> None:
     """Run the seed test suite against an agent and print a scorecard."""
+    if not agent_name and not config_path:
+        console.print("[yellow]Provide either --agent <name> or --config <path>.[/yellow]")
+        raise SystemExit(1)
+    if agent_name and config_path:
+        console.print("[yellow]Provide only one of --agent or --config, not both.[/yellow]")
+        raise SystemExit(1)
+
     try:
-        scorecard, traces, _engine = execute_and_save(agent_name, db_path, scorers)
+        scorecard, traces, _engine = execute_and_save(agent_name, db_path, scorers, config_path=config_path)
     except ValueError as exc:
         console.print(f"[yellow]{exc}[/yellow]")
         raise SystemExit(1)

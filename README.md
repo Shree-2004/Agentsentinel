@@ -42,6 +42,7 @@ pip install -e ".[dev]"
 
 pytest -v                              # runs the toy-agent end-to-end suite
 python -m agentsentinel.cli run --agent toy-agent   # prints a live scorecard
+python -m agentsentinel.cli gate --agent toy-agent  # run + check regressions vs. the last run + exit non-zero on drop
 
 # Optional, for the LLM-judge scorers (faithfulness, injection_resistance):
 pip install -e ".[judge]"
@@ -75,7 +76,8 @@ docs/
 - [x] **Phase 0** — Core interfaces, toy adapter, deterministic scorers, SQLite storage, CI.
 - [x] **Phase 1** — Real adapters for all three target agents (LangGraph research pipeline, RAG chatbot, Google ADK stock-analysis agent), each subprocess-isolated in its own venv — see [docs/architecture.md](docs/architecture.md). LangGraph and RAG chatbot are live-verified end-to-end; the ADK adapter is code-complete and harness-verified, pending a valid API key in its target repo.
 - [x] **Phase 2** — Faithfulness scorer (RAGAS-style LLM-judge, **100% calibration agreement**) + injection-resistance scorer (deterministic canary + judge fallback) + one injection test case per adapter (a poisoned RAG document, a monkeypatched ADK tool response — mechanism revised from the original MCP-server-mock plan per the MCP-bypass finding). **RAG chatbot injection case: confirmed RESISTED**, live-verified. ADK injection case: code-complete and mechanism-verified, pending a valid API key in its target repo.
-- [ ] **Phase 3** — Regression tracking against a baseline run + Streamlit dashboard (trace explorer, score history, a dedicated injection tab).
+- [x] **Phase 3a** — Regression tracking (`storage/regression.py`) + `agentsentinel gate` CLI, with per-metric thresholds (latency tolerates more jitter than injection_resistance, which tolerates none). Verified with a real before/after/recovery cycle, not just unit tests: deliberately broke the toy agent's answer, watched `gate` catch the drop and exit non-zero, reverted, watched the recovery correctly *not* get flagged. See [docs/architecture.md](docs/architecture.md).
+- [ ] **Phase 3b** — Streamlit dashboard (trace explorer, score history, a dedicated injection tab).
 - [ ] **Phase 4** — GitHub Actions CI gate wired into a real target repo (fast deterministic checks per-PR, full LLM-judge run nightly).
 
 ## License

@@ -5,22 +5,12 @@ from rich.console import Console
 from rich.table import Table
 
 import agentsentinel.scoring  # noqa: F401 - import triggers scorer registration
-from agentsentinel.adapters import available_adapters, build_adapter
+from agentsentinel.adapters import available_adapters
 from agentsentinel.cli import cli
-from agentsentinel.runner.suite_runner import run_suite
-from agentsentinel.scoring.registry import get_scorers, registered_names
-from agentsentinel.storage.db import get_engine, save_full_run
-from agentsentinel.testcases.loader import load_seed_cases
+from agentsentinel.cli._common import DETERMINISTIC_SCORERS, execute_and_save
+from agentsentinel.scoring.registry import registered_names
 
 console = Console()
-
-# Scorers that never call an LLM judge — safe to run with zero extra deps
-# and zero API cost, appropriate for a fast per-PR gate (see
-# docs/architecture.md's "fast/deterministic vs nightly/full" split).
-# LLM-judge scorers (faithfulness, injection_resistance) are opt-in via
-# --scorers so `agentsentinel run --agent toy-agent` never silently starts
-# requiring a GOOGLE_API_KEY just because a new judge scorer got registered.
-DETERMINISTIC_SCORERS = ["keyword_match", "latency", "tool_call_correctness"]
 
 
 @cli.command()
@@ -34,31 +24,18 @@ DETERMINISTIC_SCORERS = ["keyword_match", "latency", "tool_call_correctness"]
 )
 def run(agent_name: str, db_path: str | None, scorers: str | None) -> None:
     """Run the seed test suite against an agent and print a scorecard."""
-    agent = build_adapter(agent_name)
-    cases = load_seed_cases(agent_target=agent_name)
-    if not cases:
-        console.print(f"[yellow]No seed test cases found for agent '{agent_name}'.[/yellow]")
+    try:
+        scorecard, traces, _engine = execute_and_save(agent_name, db_path, scorers)
+    except ValueError as exc:
+        console.print(f"[yellow]{exc}[/yellow]")
         raise SystemExit(1)
 
-    if scorers is None:
-        scorer_names = DETERMINISTIC_SCORERS
-    elif scorers == "all":
-        scorer_names = None  # get_scorers(None) returns everything
-    else:
-        scorer_names = [s.strip() for s in scorers.split(",")]
-
-    scorer_list = get_scorers(scorer_names)
-    scorecard, traces = run_suite(agent, cases, scorer_list)
-
-    engine = get_engine(db_path)
-    save_full_run(engine, scorecard, traces)
-
-    _print_scorecard(scorecard, traces)
+    print_scorecard(scorecard, traces)
     if scorecard.pass_rate < 1.0:
         raise SystemExit(1)
 
 
-def _print_scorecard(scorecard, traces) -> None:
+def print_scorecard(scorecard, traces) -> None:
     console.print(f"\n[bold]Run {scorecard.run_id}[/bold] - agent: {scorecard.agent_name}")
     console.print(f"Pass rate: {scorecard.pass_rate:.0%}\n")
 

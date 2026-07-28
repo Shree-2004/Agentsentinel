@@ -12,6 +12,7 @@ if sys.platform == "win32":
 
 from agentsentinel.cli import cli
 from agentsentinel.cli import run  # noqa: F401 - import registers the `run` command
+from agentsentinel.cli import gate  # noqa: F401 - import registers the `gate` command
 from agentsentinel.cli import calibrate  # noqa: F401 - import registers the `calibrate` command
 
 

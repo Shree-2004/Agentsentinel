@@ -1,5 +1,7 @@
 # AgentSentinel
 
+![CI](https://github.com/Shree-2004/Agentsentinel/actions/workflows/ci.yml/badge.svg)
+
 **An evaluation and red-teaming harness for LLM agents.**
 
 Most agent portfolios stop at "it works in the demo." AgentSentinel is the other half: it wraps *any* agent (a LangGraph pipeline, a Google ADK multi-agent system, a plain RAG chain) behind one common interface, runs it against a versioned suite of normal, edge-case, and adversarial prompt-injection test cases, scores the results (faithfulness, tool-call correctness, injection resistance, latency), and gates CI on regressions.

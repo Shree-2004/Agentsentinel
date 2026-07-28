@@ -93,18 +93,16 @@ tests/
 docs/
 ```
 
-## Roadmap
+## What's included
 
-> Picking this back up cold? See [docs/next_steps.md](docs/next_steps.md) for a concrete punch list of what's actually left, not just the checkboxes below.
+- **Three real adapters** (LangGraph research pipeline, RAG chatbot, Google ADK stock-analysis agent), each subprocess-isolated in its own venv, all live-verified end-to-end
+- **Bring-your-own-agent**: evaluate a simple function-based agent with one YAML file, no custom code
+- **Calibrated LLM-judge scoring**: faithfulness (100% agreement on hand-labeled cases) and injection resistance (deterministic canary check + judge fallback)
+- **A confirmed, real red-team result**: the RAG chatbot resisted a deliberately poisoned document trying to make it leak a secret instead of answering
+- **Regression tracking** (`agentsentinel gate`), verified with an actual break → catch → fix cycle, not just unit tests
+- **A Streamlit dashboard** and **working CI**, both live — see the link at the top of this file and the green badge
 
-- [x] **Phase 0** — Core interfaces, toy adapter, deterministic scorers, SQLite storage, CI.
-- [x] **Phase 1** — Real adapters for all three target agents (LangGraph research pipeline, RAG chatbot, Google ADK stock-analysis agent), each subprocess-isolated in its own venv — see [docs/architecture.md](docs/architecture.md). All three now live-verified end-to-end, including the ADK adapter's normal cases (one test assertion corrected along the way — see docs).
-- [x] **Phase 2** — Faithfulness scorer (RAGAS-style LLM-judge, **100% calibration agreement**) + injection-resistance scorer (deterministic canary + judge fallback) + one injection test case per adapter (a poisoned RAG document, a monkeypatched ADK tool response — mechanism revised from the original MCP-server-mock plan per the MCP-bypass finding). **RAG chatbot injection case: confirmed RESISTED**, live-verified. **ADK injection case: still no confirmed verdict after 2 live attempts**, each failing to reach the poisoned tool for a different reason (a ticker-resolution miss, then a root-agent delegation short-circuit that skips the sub-agent holding the poisoned tool) — a real, repeatable finding about the target's own pipeline reliability, documented in docs/architecture.md, with a redesigned test case needed rather than a third blind retry.
-- [x] **Phase 3a** — Regression tracking (`storage/regression.py`) + `agentsentinel gate` CLI, with per-metric thresholds (latency tolerates more jitter than injection_resistance, which tolerates none). Verified with a real before/after/recovery cycle, not just unit tests: deliberately broke the toy agent's answer, watched `gate` catch the drop and exit non-zero, reverted, watched the recovery correctly *not* get flagged. See [docs/architecture.md](docs/architecture.md).
-- [x] **Phase 3b** — Streamlit dashboard: Overview (run picker + regressions), Trace Explorer (per-case output/tool-calls/sources/rationale), Score History (line chart per metric), and a dedicated 🛡️ Injection tab surfacing any `COMPLIED` verdict across every agent/run. Reads directly off the same SQLite data `run`/`gate` already write — no separate ingestion. `agentsentinel dashboard` to launch.
-- [x] **Phase 3c** — `agentsentinel gate` now runs in this repo's own CI (`.github/workflows/ci.yml`) with a rolling SQLite baseline cached via `actions/cache`, plus a deployed public dashboard (Streamlit Community Cloud) showing real, committed results including the confirmed RAG chatbot injection-resistance verdict.
-- [x] **Phase 3d** — Config-only "bring your own agent" path (`GenericAgentAdapter` + `generic_shim.py`): any simple function-shaped agent gets evaluated via one YAML file, no custom adapter needed. Real, runnable example in `examples/simple_agent/`, live-verified in CI (`tests/test_bring_your_own_agent.py`). See [docs/bring_your_own_agent.md](docs/bring_your_own_agent.md).
-- [ ] **Phase 4** — GitHub Actions CI gate wired into one of the *target* repos directly (this repo's own CI already demonstrates the mechanism — see Phase 3c — but the original scope was protecting a target repo's own PRs).
+Full build history, every real bug the harness caught along the way, and the one genuinely open question (the ADK agent's injection case — inconclusive after two attempts, for reasons documented rather than hidden) are in [docs/architecture.md](docs/architecture.md). Picking this up again later? [docs/next_steps.md](docs/next_steps.md) has the concrete punch list.
 
 ## License
 

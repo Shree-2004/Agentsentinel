@@ -1,0 +1,8 @@
+# For Streamlit Community Cloud, which looks for a root-level
+# requirements.txt. `-e .` installs the agentsentinel package itself (so
+# `from agentsentinel...` imports resolve regardless of working directory)
+# plus its core deps from pyproject.toml; streamlit/pandas are the
+# dashboard-only extra on top of that.
+-e .
+streamlit>=1.31
+pandas>=2.0

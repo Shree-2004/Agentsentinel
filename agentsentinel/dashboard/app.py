@@ -9,17 +9,28 @@ way around.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 from agentsentinel.dashboard import data
 from agentsentinel.dashboard.views import history_chart, injection_tab, overview, trace_explorer
 from agentsentinel.storage.db import get_engine
 
+# agentsentinel/agentsentinel/dashboard/app.py -> agentsentinel/ (repo root)
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_DEMO_DB = _REPO_ROOT / "demo_data.db"
+
 st.set_page_config(page_title="AgentSentinel", layout="wide")
 st.title("AgentSentinel")
 st.caption("Evaluation and red-teaming results for the wrapped agents.")
 
-db_path = st.sidebar.text_input("Database", value="agentsentinel.db")
+# Defaults to the committed showcase dataset (demo_data.db) so this renders
+# something real immediately on a fresh deploy (e.g. Streamlit Community
+# Cloud) with no setup step. Override in the sidebar to point at your own
+# agentsentinel.db from a local `run`/`gate`.
+default_db = str(_DEMO_DB) if _DEMO_DB.exists() else "agentsentinel.db"
+db_path = st.sidebar.text_input("Database", value=default_db)
 engine = get_engine(db_path)
 
 agents = data.list_agents(engine)

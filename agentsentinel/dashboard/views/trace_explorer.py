@@ -18,6 +18,12 @@ def render(engine, run_id: str) -> None:
         st.info("No traces for this run.")
         return
 
+    st.caption(
+        "One expander per test case in this run. 🟢 means the agent ran without error "
+        "(scores below still tell you if it passed); 🔴 means the agent itself errored out. "
+        "Expand a case to see its raw output, tool calls, and each scorer's rationale."
+    )
+
     for trace in traces.itertuples():
         icon = "🔴" if trace.error else "🟢"
         with st.expander(f"{icon} {trace.test_case_id} — {trace.latency_ms:.0f}ms"):

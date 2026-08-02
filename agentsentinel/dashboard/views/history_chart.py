@@ -26,6 +26,7 @@ def render(engine, agent_name: str) -> None:
         st.info("No scored metrics recorded yet.")
         return
 
+    st.caption("Tracks one metric's aggregate score across every run for this agent, oldest to newest — a regression shows up here as a dip.")
     metric = st.selectbox("Metric", options=sorted(all_metrics))
     history = data.get_score_history(engine, agent_name, metric)
     if history.empty:

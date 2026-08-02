@@ -25,12 +25,37 @@ st.set_page_config(page_title="AgentSentinel", layout="wide")
 st.title("AgentSentinel")
 st.caption("Evaluation and red-teaming results for the wrapped agents.")
 
-# Defaults to the committed showcase dataset (demo_data.db) so this renders
-# something real immediately on a fresh deploy (e.g. Streamlit Community
-# Cloud) with no setup step. Override in the sidebar to point at your own
-# agentsentinel.db from a local `run`/`gate`.
-default_db = str(_DEMO_DB) if _DEMO_DB.exists() else "agentsentinel.db"
-db_path = st.sidebar.text_input("Database", value=default_db)
+with st.expander("What am I looking at?", expanded=True):
+    st.markdown(
+        """
+AgentSentinel is a test harness for LLM agents: it runs each agent against a
+suite of normal, edge-case, and **adversarial prompt-injection** test cases,
+then scores every response. This dashboard is the read-only viewer over
+those results — nothing here re-computes a score, it just displays what the
+CLI (`agentsentinel run` / `gate`) already decided.
+
+**Start with the agent picker in the sidebar**, then use the tabs below:
+
+- **Overview** — pick a run, see its pass rate and whether it regressed
+  against the previous ("baseline") run.
+- **Trace Explorer** — drill into one run: every test case's raw output,
+  tool calls, and *why* each scorer gave the score it did.
+- **Score History** — a metric's score over time, across runs, as a trend
+  line — so a regression shows up as a dip, not just a red table row.
+- **🛡️ Injection** — the headline tab: every case where an agent was
+  attacked with a prompt injection, across *all* agents and runs, with any
+  case where the agent fell for it (🔴 "complied") called out first.
+        """
+    )
+
+with st.sidebar.expander("Advanced: data source", expanded=False):
+    st.caption(
+        "Defaults to the committed showcase dataset. Point this at your own "
+        "`agentsentinel.db` (produced by a local `run`/`gate`) to see your own results."
+    )
+    default_db = str(_DEMO_DB) if _DEMO_DB.exists() else "agentsentinel.db"
+    db_path = st.text_input("Database path", value=default_db)
+
 engine = get_engine(db_path)
 
 agents = data.list_agents(engine)
@@ -41,7 +66,7 @@ if not agents:
     )
     st.stop()
 
-agent_name = st.sidebar.selectbox("Agent", options=agents)
+agent_name = st.sidebar.selectbox("Agent", options=agents, help="Each agent was evaluated independently — pick one to see its results.")
 
 tab_overview, tab_traces, tab_history, tab_injection = st.tabs(
     ["Overview", "Trace Explorer", "Score History", "🛡️ Injection"]

@@ -58,8 +58,13 @@ def get_score_history(engine: Engine, agent_name: str, metric_name: str) -> pd.D
 
 
 def get_injection_cases(engine: Engine) -> pd.DataFrame:
-    """Every trace ever scored by injection_resistance, across all agents
-    and runs — the data behind the dedicated injection tab."""
+    """Every trace ever scored by injection_resistance on a *genuine*
+    adversarial-injection case, across all agents and runs — the data behind
+    the dedicated injection tab. Excludes the scorer's "not an injection
+    case" no-op pass (see scoring/injection_resistance.py) — those aren't
+    attacks that were resisted, they're cases the attack never applied to,
+    and counting them as "resisted" would inflate the headline number with
+    tests that were never adversarial in the first place."""
     return pd.read_sql(
         """
         SELECT t.run_id, t.test_case_id, t.agent_name, t.output_text, t.created_at,
@@ -67,6 +72,7 @@ def get_injection_cases(engine: Engine) -> pd.DataFrame:
         FROM scores s
         JOIN traces t ON t.trace_id = s.trace_id
         WHERE s.metric_name = 'injection_resistance'
+          AND s.rationale != 'not an injection case'
         ORDER BY t.created_at DESC
         """,
         engine,

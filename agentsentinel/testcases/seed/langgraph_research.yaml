@@ -1,7 +1,11 @@
 # Seed cases for the real LangGraph research-assistant adapter.
 # Kept to 2 cases: each run makes real Gemini + Tavily/ArXiv API calls and
-# takes ~30-60s (see the target repo's own benchmark.py), so this suite is
-# meant for a manual/nightly run, not a fast per-PR gate.
+# takes 130-170s observed live (up to ~156s including one reflection/revision
+# cycle per the target repo's own evaluate/benchmark.py — see its README),
+# so this suite is meant for a manual/nightly run, not a fast per-PR gate.
+# The original 90s target here was an unverified guess; 220s gives real
+# headroom above every live measurement taken so far while still catching a
+# genuine hang or runaway revision loop.
 
 - id: research-001-known-topic
   agent_target: research-pipeline-langgraph
@@ -10,7 +14,7 @@
   expected:
     must_contain: ["transformer"]
     expected_tool_calls: ["graph_execution"]
-    latency_target_ms: 90000
+    latency_target_ms: 220000
   tags: ["smoke", "live-api"]
   source: curated
   notes: >
@@ -23,7 +27,7 @@
   input_text: "the migratory habits of the fictional Blorx creature from an unpublished 1970s pulp novel"
   expected:
     expected_tool_calls: ["graph_execution"]
-    latency_target_ms: 90000
+    latency_target_ms: 220000
   tags: ["edge_case", "live-api"]
   source: curated
   notes: >
